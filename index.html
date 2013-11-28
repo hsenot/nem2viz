@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>NEM real-time visualisation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Bootstrap -->
+    <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+      <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+    <![endif]-->
+   
+  </head>
+  <body>
+
+    <div class="container well" style="padding-top:15px;">
+      <div class="jumbotron">
+        <div class="btn-group" data-toggle="buttons">
+          <label class="btn btn-primary filter" data-filter="VIC">
+            <input type="radio" name="options" id="option1">VIC
+          </label>
+          <label class="btn btn-primary filter" data-filter="SA">
+            <input type="radio" name="options" id="option2">SA
+          </label>
+          <label class="btn btn-primary filter" data-filter="NSW">
+            <input type="radio" name="options" id="option3">NSW
+          </label>
+        </div>
+        <ul>
+          <li class="sort" data-sort="data-dispatch" data-order="desc">Dispatch DESC</li>
+          <li class="sort" data-sort="data-dispatch" data-order="asc">Dispatch ASC</li>
+          <li class="sort" data-sort="default" data-order="asc"></li>
+          <li class="sort" data-sort="random"></li>
+        </ul>
+        <ul id="mylist">
+        </ul>
+      </div>
+    </div>
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="jquery-1.10.2.min.js"></script>
+    <!-- MixItUp jQuery plugin -->
+    <script src="mixitup/jquery.mixitup.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="bootstrap/js/bootstrap.min.js"></script>
+    <script>
+
+      var pumpAListItem = function(d) {
+        return '<p class="well mix '+d.region+'" data-name="'+d.station_name+'" data-dispatch="'+d.qty+'">'+d.station_name+'</p>';
+      }
+
+      $(document).ready(function(){
+        // Nothing much here
+        $.getJSON("dispatch.json",function(data){
+          //console.log(Object.keys(data).length+" elements found in JSON file");
+
+          $('.btn-group').button();
+
+          // Pump some elements into the unordered list
+          for (var o in data) {
+            if (data.hasOwnProperty(o))
+            {
+              // Build a list element based on this object
+              $('#mylist').append($(pumpAListItem(data[o])));
+            }
+          }
+
+          // Activating the mixitup plugin on the list
+          $('#mylist').mixitup();
+        });
+      });
+
+    </script>
+  </body>
+</html>
