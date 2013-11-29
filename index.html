@@ -27,10 +27,8 @@
         <div class="text-center well">
           <!-- Split button for state filtering -->
           <div class="btn-group text-left">
-            <button id="stateFilterBtn" type="button" class="btn btn-primary disabled">State</button>
-            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
-              <span class="caret"></span>
-              <span class="sr-only">Toggle Dropdown</span>
+            <button id="stateFilterBtn" type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+              State <span class="caret"></span>
             </button>
             <ul id="stateFilter" class="dropdown-menu" role="menu">
               <li><a href="#" class="active" data-state="all">All states</a></li>
@@ -45,10 +43,8 @@
 
           <!-- Split button for technology filtering -->
           <div class="btn-group text-left">
-            <button id="techFilterBtn" type="button" class="btn btn-primary disabled">Technology</button>
-            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
-              <span class="caret"></span>
-              <span class="sr-only">Toggle Dropdown</span>
+            <button id="techFilterBtn" type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+              Technology <span class="caret"></span>
             </button>
             <ul id="techFilter" class="dropdown-menu" role="menu">
               <li><a href="#" class="active" data-tech="all">All technologies</a></li> \
@@ -138,7 +134,7 @@
           $(this).addClass("active");
                       
           // Changing label of state filter button
-          $('#techFilterBtn').html($(this).html());
+          $('#techFilterBtn').html($(this).html()+' <span class="caret"></span>');
 
           // Show / hide
           $('#mylist a').hide();
@@ -171,7 +167,7 @@
             $('#stateFilter a').removeClass("active");
             $(this).addClass("active");
             // Changing label of state filter button
-            $('#stateFilterBtn').html($(this).html());
+            $('#stateFilterBtn').html($(this).html()+' <span class="caret"></span>');
 
             // Show / hide
             $('#mylist a').hide();
