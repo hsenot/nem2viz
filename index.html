@@ -86,7 +86,7 @@
 
       var pumpAListItem = function(d) {
         return '<a href="#" class="list-group-item" data-qty="'+d.qty+'" data-co2_factor="'+d.co2_factor+'" data-capacity="'+d.reg_capacity_mw+'" data-utilisation="'+d.utilisation+'" data-state="'+d.region+'" data-tech="'+d.fuel+'"> \
-                  <span class="badge">'+d.qty+' MW</span> \
+                  <span class="badge">'+d.qty+' / '+ d.reg_capacity_mw +' MW</span> \
                   <h4 class="list-group-item-heading">'+d.duid+' - '+d.station_name+'</h4> \
                   <div class="progress"> \
                     <div class="progress-bar" role="progressbar" style="width: '+d.utilisation+'%;"> \
