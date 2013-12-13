@@ -233,7 +233,7 @@
         .attr("transform", "translate(.5,.5)")
         .style("shape-rendering", "crispEdges");;
 
-    d3.json("dispatch.json", function(json_data) {
+    d3.json("/nem2json/dispatch.json", function(json_data) {
       g_json_data = json_data;
       var data = addStationsToRoot(json_data,"NEM");
       console.log(data);
