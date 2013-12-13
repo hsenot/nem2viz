@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>NEM real-time visualisation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Bootstrap -->
+    <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+      <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+    <![endif]-->
+
+    <style>
+      ul{
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+
+    <div class="container well" style="padding-top:15px;">
+      <div class="jumbotron">
+
+        <div class="text-center well">
+          <!-- Split button for state filtering -->
+          <div class="btn-group text-left">
+            <button id="stateFilterBtn" type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+              State <span class="caret"></span>
+            </button>
+            <ul id="stateFilter" class="dropdown-menu" role="menu">
+              <li><a href="#" class="active" data-state="all">All states</a></li>
+              <li class="divider"></li>
+              <li><a href="#" data-state="NSW">NSW</a></li>
+              <li><a href="#" data-state="QLD">QLD</a></li>
+              <li><a href="#" data-state="SA">SA</a></li>
+              <li><a href="#" data-state="TAS">TAS</a></li>
+              <li><a href="#" data-state="VIC">VIC</a></li>
+            </ul>
+          </div>
+
+          <!-- Split button for technology filtering -->
+          <div class="btn-group text-left">
+            <button id="techFilterBtn" type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+              Technology <span class="caret"></span>
+            </button>
+            <ul id="techFilter" class="dropdown-menu" role="menu">
+              <li><a href="#" class="active" data-tech="all">All technologies</a></li> \
+              <li class="divider"></li>
+            </ul>
+          </div>
+
+          <!-- Sorting buttons -->
+          <div id="sortButtons" class="btn-group text-left" data-toggle="buttons">
+            <label class="btn btn-primary">
+              <input type="radio" name="options" id="qty">Dispatch
+            </label>
+            <label class="btn btn-primary">
+              <input type="radio" name="options" id="capacity">Capacity
+            </label>
+            <label class="btn btn-primary">
+              <input type="radio" name="options" id="utilisation">Utilisation
+            </label>
+            <label class="btn btn-primary">
+              <input type="radio" name="options" id="co2_factor">CO2 intensity
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <ul id="mylist">
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="jquery-1.10.2.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="bootstrap/js/bootstrap.min.js"></script>
+    <script>
+
+      var json_data;
+
+      var pumpAListItem = function(d) {
+        return '<a href="#" class="list-group-item" data-qty="'+d.qty+'" data-co2_factor="'+d.co2_factor+'" data-capacity="'+d.reg_capacity_mw+'" data-utilisation="'+d.utilisation+'" data-state="'+d.region+'" data-tech="'+d.fuel+'" style="width:300px;height:200px;"> \
+                  <span class="badge">'+d.qty+' / '+ d.reg_capacity_mw +' MW</span> \
+                  <h4 class="list-group-item-heading">'+d.duid+' - '+d.station_name+'</h4> \
+                  <div class="progress"> \
+                    <div class="progress-bar" role="progressbar" style="width: '+d.utilisation+'%;"> \
+                    </div> \
+                  </div> \
+                </a>';
+      }
+
+      var unique = function (array) {
+          return $.grep(array, function(el, index) {
+              return index == $.inArray(el, array);
+          });
+      }
+
+      var refreshTechList = function(activeState) {
+        var listItems = '<li><a href="#" class="active" data-tech="all">All technologies</a></li><li class="divider"></li>';
+        var techArray = [];
+
+        // Returning fuels corresponding to the active state
+        techArray = $.map(json_data,function(o,i){
+          if (activeState=="all" || o.region==activeState)
+          {
+            return o.fuel;
+          }
+        });
+
+        // Removing duplicates, then sorting alphabetically
+        techArray = unique(techArray).sort();
+
+        // Building an item list based for the button drop down based on this array
+        $.each(techArray,function(j){
+          listItems += '<li><a href="#" data-tech="'+techArray[j]+'">'+techArray[j]+'</a></li>';
+        })
+
+        // Removing previous tech options, adding the ones relevant to the state
+        $('#techFilter').empty().append(listItems);
+
+        // Re-adding the click handler on the newly added elements
+        $('#techFilter a').click(function(e){
+          // Retrieving state and tech
+          var state = $('#stateFilter a.active').attr('data-state');
+          var tech = $(this).attr('data-tech');
+          // Managing active status by adding class
+          $('#techFilter a').removeClass("active");
+          $(this).addClass("active");
+                      
+          // Changing label of state filter button
+          $('#techFilterBtn').html($(this).html()+' <span class="caret"></span>');
+
+          // Show / hide
+          $('#mylist a').hide();
+          var stateFilter = '[data-state="'+state+'"]';
+          var techFilter = '[data-tech="'+tech+'"]';
+          if (state=="all") {stateFilter='';}
+          if (tech=="all") {techFilter='';}
+          $('#mylist a'+stateFilter+techFilter).show();
+        });
+
+        // Clicking the active one
+        $('#techFilter a.active').click();
+      };
+
+      $(document).ready(function(){
+        // Nothing much here
+        $.getJSON("dispatch.json",function(data){
+          //console.log(Object.keys(data).length+" elements found in JSON file");
+          json_data = data;
+
+          $('.btn-group').button();
+
+          // Refresh technology list based on state
+          refreshTechList($('#stateFilter a.active').attr('data-state'));
+
+          $('#stateFilter a').click(function(e){
+            // Retrieving state
+            var state = $(this).attr('data-state');
+            // Managing active status by adding class
+            $('#stateFilter a').removeClass("active");
+            $(this).addClass("active");
+            // Changing label of state filter button
+            $('#stateFilterBtn').html($(this).html()+' <span class="caret"></span>');
+
+            // Show / hide
+            $('#mylist a').hide();
+            var stateFilter = '[data-state="'+state+'"]';
+            if (state=="all") {stateFilter='';}            
+            $('#mylist a'+stateFilter).show();
+
+            refreshTechList(state);
+          });
+
+          $('#sortButtons .btn').click(function(e){
+            // Sorting by attribute
+            var sortAttribute = 'data-'+$(this).find('input').attr('id');
+
+            var orderedList = $("#mylist a").sort(function(a,b){
+              if(parseFloat(a.getAttribute(sortAttribute)) > parseFloat(b.getAttribute(sortAttribute))) {
+                  return -1;
+              } else {
+                  return 1;
+              }
+            });
+
+            $("#mylist").empty().append(orderedList);
+
+          });
+
+          // Pump some elements into the unordered list
+          for (var o in data) {
+            if (data.hasOwnProperty(o))
+            {
+              // Adding the generator code to the object
+              data[o]["duid"] = o;
+              // Setting quantity dispatched to null if undefined
+              if (!data[o].qty)
+              {
+                data[o].qty = 0;
+              }
+              // Adding the utilisation factor
+              if (data[o].reg_capacity_mw)
+              {
+                data[o]["utilisation"] = data[o].qty / data[o].reg_capacity_mw * 100;
+              }
+              else
+              {
+                data[o].reg_capacity_mw = 0;
+              }
+              // Build a list element based on this object
+              $('#mylist').append($(pumpAListItem(data[o])));
+            }
+          }
+
+        });
+      });
+
+    </script>
+  </body>
+</html>

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta charset="utf-8">
     <title>NEM real-time visualisation</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Bootstrap -->
@@ -17,210 +18,349 @@
       ul{
         padding: 0;
       }
+
+      .container {
+          width: 1280px;
+      }
+
+      #body {
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        margin: auto;
+        position: relative;
+        width: 1280px;
+      }
+
+      form {
+        position: absolute;
+        right: 10px;
+        top: 10px;
+      }
+
+      .node {
+        border: solid 1px white;
+        font: 10px sans-serif;
+        line-height: 12px;
+        overflow: hidden;
+        position: absolute;
+        text-indent: 2px;
+      }
     </style>
   </head>
   <body>
-
-    <div class="container well" style="padding-top:15px;">
-      <div class="jumbotron">
-
-        <div class="text-center well">
-          <!-- Split button for state filtering -->
-          <div class="btn-group text-left">
-            <button id="stateFilterBtn" type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
-              State <span class="caret"></span>
-            </button>
-            <ul id="stateFilter" class="dropdown-menu" role="menu">
-              <li><a href="#" class="active" data-state="all">All states</a></li>
-              <li class="divider"></li>
-              <li><a href="#" data-state="NSW">NSW</a></li>
-              <li><a href="#" data-state="QLD">QLD</a></li>
-              <li><a href="#" data-state="SA">SA</a></li>
-              <li><a href="#" data-state="TAS">TAS</a></li>
-              <li><a href="#" data-state="VIC">VIC</a></li>
-            </ul>
-          </div>
-
-          <!-- Split button for technology filtering -->
-          <div class="btn-group text-left">
-            <button id="techFilterBtn" type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
-              Technology <span class="caret"></span>
-            </button>
-            <ul id="techFilter" class="dropdown-menu" role="menu">
-              <li><a href="#" class="active" data-tech="all">All technologies</a></li> \
-              <li class="divider"></li>
-            </ul>
-          </div>
-
-          <!-- Sorting buttons -->
-          <div id="sortButtons" class="btn-group text-left" data-toggle="buttons">
-            <label class="btn btn-primary">
-              <input type="radio" name="options" id="qty">Dispatch
-            </label>
-            <label class="btn btn-primary">
-              <input type="radio" name="options" id="capacity">Capacity
-            </label>
-            <label class="btn btn-primary">
-              <input type="radio" name="options" id="utilisation">Utilisation
-            </label>
-            <label class="btn btn-primary">
-              <input type="radio" name="options" id="co2_factor">CO2 intensity
-            </label>
-          </div>
+    <div class="container" style="padding-top:15px;">
+      <div class="text-center well">
+        <!-- Split button for state filtering -->
+        <div class="btn-group text-left">
+          <button id="stateFilterBtn" type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+            State <span class="caret"></span>
+          </button>
+          <ul id="stateFilter" class="dropdown-menu" role="menu">
+            <li><a href="#" class="active" data-state="NEM">All states</a></li>
+            <li class="divider"></li>
+            <li><a href="#" data-state="NSW">NSW</a></li>
+            <li><a href="#" data-state="QLD">QLD</a></li>
+            <li><a href="#" data-state="SA">SA</a></li>
+            <li><a href="#" data-state="TAS">TAS</a></li>
+            <li><a href="#" data-state="VIC">VIC</a></li>
+          </ul>
         </div>
 
-        <div>
-          <ul id="mylist">
+        <!-- Split button for technology filtering -->
+        <div class="btn-group text-left">
+          <button id="techFilterBtn" type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+            All technologies <span class="caret"></span>
+          </button>
+          <ul id="techFilter" class="dropdown-menu" role="menu">
+            <li><a href="#" class="active" data-tech="ALL">All technologies</a></li> \
+            <li class="divider"></li>
           </ul>
         </div>
       </div>
     </div>
 
+    <div id="body">
+    </div>
+
+    <script src="http://d3js.org/d3.v3.min.js"></script>
     <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
     <script src="jquery-1.10.2.min.js"></script>
     <!-- Include all compiled plugins (below), or include individual files as needed -->
     <script src="bootstrap/js/bootstrap.min.js"></script>
     <script>
+    var g_json_data, current_zoom = 0;
+    var color_arr = {
+      "Bagasse":"purple", 
+      "Black Coal":"black", 
+      "Brown Coal":"brown", 
+      "Coal Seam Methane":"black", 
+      "Coal Tailings":"black", 
+      "Diesel":"yellow", 
+      "Kerosene":"yellow", 
+      "Landfill Methane / Landfill Gas":"purple", 
+      "Macadamia Nut Shells":"orange", 
+      "Natural Gas":"blue", 
+      "Natural Gas / Diesel":"blue", 
+      "Natural Gas / Fuel Oil":"blue", 
+      "Sewerage/Waste Water":"purple", 
+      "Waste Coal Mine Gas":"black", 
+      "Water":"lightblue", 
+      "Wind":"green"
+    }
+    var color = function(f){
+      return color_arr[f];
+    }
 
-      var json_data;
+    var unique = function (array) {
+        return $.grep(array, function(el, index) {
+            return index == $.inArray(el, array);
+        });
+    }
 
-      var pumpAListItem = function(d) {
-        return '<a href="#" class="list-group-item" data-qty="'+d.qty+'" data-co2_factor="'+d.co2_factor+'" data-capacity="'+d.reg_capacity_mw+'" data-utilisation="'+d.utilisation+'" data-state="'+d.region+'" data-tech="'+d.fuel+'"> \
-                  <span class="badge">'+d.qty+' / '+ d.reg_capacity_mw +' MW</span> \
-                  <h4 class="list-group-item-heading">'+d.duid+' - '+d.station_name+'</h4> \
-                  <div class="progress"> \
-                    <div class="progress-bar" role="progressbar" style="width: '+d.utilisation+'%;"> \
-                    </div> \
-                  </div> \
-                </a>';
+    var refreshTechList = function(activeState) {
+      var listItems = '<li><a href="#" class="active" data-tech="ALL">All technologies</a></li><li class="divider"></li>';
+      var techArray = [];
+
+      // Returning fuels corresponding to the active state
+      techArray = $.map(g_json_data,function(o,i){
+        if (activeState=="NEM" || o.region==activeState)
+        {
+          return o.fuel;
+        }
+      });
+
+      // Removing duplicates, then sorting alphabetically
+      techArray = unique(techArray).sort();
+
+      // Building an item list based for the button drop down based on this array
+      $.each(techArray,function(j){
+        listItems += '<li><a href="#" data-tech="'+techArray[j]+'">'+techArray[j]+'</a></li>';
+      })
+
+      // Removing previous tech options, adding the ones relevant to the state
+      $('#techFilter').empty().append(listItems);
+
+      // Re-adding the click handler on the newly added elements
+      $('#techFilter a').click(function(e){
+        // Retrieving state and tech
+        var state = $('#stateFilter a.active').attr('data-state');
+        var tech = $(this).attr('data-tech');
+        // Managing active status by adding class
+        $('#techFilter a').removeClass("active");
+        $(this).addClass("active");
+                    
+        // Changing label of state filter button
+        $('#techFilterBtn').html($(this).html()+' <span class="caret"></span>');
+
+        // Show / hide
+        var stateFilter = '[data-state="'+state+'"]';
+        var techFilter = '[data-tech="'+tech+'"]';
+        if (state=="NEM") {stateFilter='';}
+        if (tech=="ALL") {techFilter='';}
+      });
+
+      // Clicking the active one
+      $('#techFilter a.active').click();
+    };
+
+    function addStationsToRoot(json_data,regionFilter){
+      var root = {
+        name:"NEM",
+        children:[
+          {name:"NSW",children:[]},
+          {name:"QLD",children:[]},
+          {name:"SA",children:[]},
+          {name:"TAS",children:[]},
+          {name:"VIC",children:[]}
+        ]
       }
 
-      var unique = function (array) {
-          return $.grep(array, function(el, index) {
-              return index == $.inArray(el, array);
-          });
-      }
-
-      var refreshTechList = function(activeState) {
-        var listItems = '<li><a href="#" class="active" data-tech="all">All technologies</a></li><li class="divider"></li>';
-        var techArray = [];
-
-        // Returning fuels corresponding to the active state
-        techArray = $.map(json_data,function(o,i){
-          if (activeState=="all" || o.region==activeState)
+      for (s in json_data)
+      {
+        if (json_data.hasOwnProperty(s))
+        {
+          for (var m=0;m<root.children.length;m++)
           {
-            return o.fuel;
-          }
-        });
-
-        // Removing duplicates, then sorting alphabetically
-        techArray = unique(techArray).sort();
-
-        // Building an item list based for the button drop down based on this array
-        $.each(techArray,function(j){
-          listItems += '<li><a href="#" data-tech="'+techArray[j]+'">'+techArray[j]+'</a></li>';
-        })
-
-        // Removing previous tech options, adding the ones relevant to the state
-        $('#techFilter').empty().append(listItems);
-
-        // Re-adding the click handler on the newly added elements
-        $('#techFilter a').click(function(e){
-          // Retrieving state and tech
-          var state = $('#stateFilter a.active').attr('data-state');
-          var tech = $(this).attr('data-tech');
-          // Managing active status by adding class
-          $('#techFilter a').removeClass("active");
-          $(this).addClass("active");
-                      
-          // Changing label of state filter button
-          $('#techFilterBtn').html($(this).html()+' <span class="caret"></span>');
-
-          // Show / hide
-          $('#mylist a').hide();
-          var stateFilter = '[data-state="'+state+'"]';
-          var techFilter = '[data-tech="'+tech+'"]';
-          if (state=="all") {stateFilter='';}
-          if (tech=="all") {techFilter='';}
-          $('#mylist a'+stateFilter+techFilter).show();
-        });
-
-        // Clicking the active one
-        $('#techFilter a.active').click();
-      };
-
-      $(document).ready(function(){
-        // Nothing much here
-        $.getJSON("dispatch.json",function(data){
-          //console.log(Object.keys(data).length+" elements found in JSON file");
-          json_data = data;
-
-          $('.btn-group').button();
-
-          // Refresh technology list based on state
-          refreshTechList($('#stateFilter a.active').attr('data-state'));
-
-          $('#stateFilter a').click(function(e){
-            // Retrieving state
-            var state = $(this).attr('data-state');
-            // Managing active status by adding class
-            $('#stateFilter a').removeClass("active");
-            $(this).addClass("active");
-            // Changing label of state filter button
-            $('#stateFilterBtn').html($(this).html()+' <span class="caret"></span>');
-
-            // Show / hide
-            $('#mylist a').hide();
-            var stateFilter = '[data-state="'+state+'"]';
-            if (state=="all") {stateFilter='';}            
-            $('#mylist a'+stateFilter).show();
-
-            refreshTechList(state);
-          });
-
-          $('#sortButtons .btn').click(function(e){
-            // Sorting by attribute
-            var sortAttribute = 'data-'+$(this).find('input').attr('id');
-
-            var orderedList = $("#mylist a").sort(function(a,b){
-              if(parseFloat(a.getAttribute(sortAttribute)) > parseFloat(b.getAttribute(sortAttribute))) {
-                  return -1;
-              } else {
-                  return 1;
-              }
-            });
-
-            $("#mylist").empty().append(orderedList);
-
-          });
-
-          // Pump some elements into the unordered list
-          for (var o in data) {
-            if (data.hasOwnProperty(o))
+            if (root.children[m].name == json_data[s].region)
             {
-              // Adding the generator code to the object
-              data[o]["duid"] = o;
-              // Setting quantity dispatched to null if undefined
-              if (!data[o].qty)
+              // Looping on existing fuels for this region
+              var found_fuel = false;
+              for (var n=0;n<root.children[m].children.length;n++)
               {
-                data[o].qty = 0;
+                if (root.children[m].children[n].name == json_data[s].fuel)
+                {
+                  // Then it means the fuel exists and we just need to push the station in the children array
+                  root.children[m].children[n].children.push(json_data[s]);
+                  found_fuel = true;
+                  break;
+                }
               }
-              // Adding the utilisation factor
-              if (data[o].reg_capacity_mw)
+              // If fuel has not been found, the station is the first of this fuel type
+              if (!found_fuel)
               {
-                data[o]["utilisation"] = data[o].qty / data[o].reg_capacity_mw * 100;
+                root.children[m].children.push({
+                  "name":json_data[s].fuel,
+                  "children": [json_data[s]]
+                });
               }
-              else
-              {
-                data[o].reg_capacity_mw = 0;
-              }
-              // Build a list element based on this object
-              $('#mylist').append($(pumpAListItem(data[o])));
             }
           }
+        }
+      }
+      return root;
+    }
 
+    var w = 1280,
+        h = 800 - 180,
+        x = d3.scale.linear().range([0, w]),
+        y = d3.scale.linear().range([0, h]),
+        root,
+        node;
+
+    var treemap = d3.layout.treemap()
+        .round(false)
+        .size([w, h])
+        .sticky(true)
+        .value(function(d) { return d.qty; });
+
+    var svg = d3.select("#body").append("div")
+        .attr("class", "chart")
+        .style("width", w + "px")
+        .style("height", h + "px")
+      .append("svg:svg")
+        .attr("width", w)
+        .attr("height", h)
+      .append("svg:g")
+        .attr("transform", "translate(.5,.5)")
+        .style("shape-rendering", "crispEdges");;
+
+    d3.json("dispatch.json", function(json_data) {
+      g_json_data = json_data;
+      var data = addStationsToRoot(json_data,"NEM");
+      console.log(data);
+      //refreshTechList($('#stateFilter a.active').attr('data-state'));
+
+      node = root = data;
+
+      var nodes = treemap.nodes(root)
+          .filter(function(d) { return !d.children; });
+
+      var cell = svg.selectAll("g")
+          .data(nodes)
+        .enter().append("svg:g")
+          .attr("class", "cell")
+          .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
+          .on("click", function(d) {
+            if (current_zoom == 2)
+            {
+              current_zoom = 3;
+              alert("Detail page now!");
+            } 
+            if (current_zoom == 1)
+            {
+              current_zoom = 2;
+              return zoom(d.parent);
+            }            
+            if (current_zoom == 0)
+            {
+              current_zoom = 1;
+              return zoom(d.parent.parent);
+            }    
+          });
+
+      cell.append("svg:rect")
+          .attr("width", function(d) { return d.dx - 1; })
+          .attr("height", function(d) { return d.dy - 1; })
+          .style("fill", function(d) { return color(d.fuel); })
+          .style("opacity",0.5);
+
+      cell.append("svg:text")
+          .attr("x", function(d) { return d.dx / 2; })
+          .attr("y", function(d) { return d.dy / 2; })
+          .attr("dy", ".35em")
+          .attr("text-anchor", "middle")
+          .text(function(d) {
+            // If the cell is "big enough"
+            if (d.dx > 50 && d.dy > 10)
+            {return d.station_name.replace("Power Station","").replace("Power Plant","");} 
+            else
+            {return "";}
+          })
+          .style("font-size","10px")
+          .style("opacity", function(d) { d.w = this.getComputedTextLength(); return d.dx > d.w ? 1 : 0; });
+
+      cell.append("svg:title")
+        .text(function(d) {
+          if (!d.children)
+          {
+            return "Fuel: "+d.fuel+"\nOutput: "+d.qty+"MW"+"\nCapacity: "+Math.round(parseFloat(d.qty)/parseFloat(d.reg_capacity_mw)*100)+"%";
+          }
         });
+
+      d3.select(window).on("click", function() { current_zoom=0;zoom(root); });
+
+      d3.select("select").on("change", function() {
+        treemap.value(this.value == "size" ? size : count).nodes(root);
+        zoom(node);
       });
+    });
+
+    function size(d) {
+      return d.size;
+    }
+
+    function count(d) {
+      return 1;
+    }
+
+    function zoom(d) {
+      var kx = w / d.dx, ky = h / d.dy;
+      x.domain([d.x, d.x + d.dx]);
+      y.domain([d.y, d.y + d.dy]);
+
+      var t = svg.selectAll("g.cell").transition()
+          .duration(1000)
+          .attr("transform", function(d) { return "translate(" + x(d.x) + "," + y(d.y) + ")"; });
+
+      t.select("rect")
+          .attr("width", function(d) { return kx * d.dx - 1; })
+          .attr("height", function(d) { return ky * d.dy - 1; })
+
+      t.select("text")
+          .attr("x", function(d) { return kx * d.dx / 2; })
+          .attr("y", function(d) { return ky * d.dy / 2; })
+          .style("opacity", function(d) { return kx * d.dx > d.w ? 1 : 0; });
+
+      node = d;
+      if (d3.event)
+      {
+        d3.event.stopPropagation();
+      }
+    }
+
+    $(document).ready(function(){
+      $('.btn-group').button();
+
+      d3.select('#stateFilter').selectAll('a').on("click", function() { 
+        // Retrieving state
+        var state = $(this).attr('data-state');
+        // Managing active status by adding class
+        $('#stateFilter a').removeClass("active");
+        $(this).addClass("active");
+        // Changing label of state filter button
+        $('#stateFilterBtn').html($(this).html()+' <span class="caret"></span>');
+        // Show / hide
+        refreshTechList(state);
+        // Zoom to the right node
+        for (n in root.children)
+        {
+          if (root.children[n].name==state)
+          {
+            zoom(root.children[n]);
+            break;
+          }
+        }
+      });
+    });
 
     </script>
   </body>
